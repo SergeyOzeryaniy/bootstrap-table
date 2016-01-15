@@ -273,6 +273,8 @@
         'column-search.bs.table': 'onColumnSearch'
     });
 
+    $.fn.bootstrapTable.methods.push('addFilterField');
+
     var BootstrapTable = $.fn.bootstrapTable.Constructor,
         _init = BootstrapTable.prototype.init,
         _initToolbar = BootstrapTable.prototype.initToolbar,
@@ -406,22 +408,29 @@
                 var value = item[key];
                 
                 // Fix #142: search use formated data
-                if (thisColumn && thisColumn.searchFormatter) {
-                    value = $.fn.bootstrapTable.utils.calculateObjectValue(that.header,
-                    that.header.formatters[$.inArray(key, that.header.fields)],
-                    [value, item, i], value);
-                }
-
-                if (thisColumn.filterStrictSearch) {
-                    if (!($.inArray(key, that.header.fields) !== -1 &&
-                        (typeof value === 'string' || typeof value === 'number') &&
-                        value.toString().toLowerCase() === fval.toString().toLowerCase())) {
-                        return false;
+                if (thisColumn) {
+                    if (thisColumn.searchFormatter) {
+                        value = $.fn.bootstrapTable.utils.calculateObjectValue(that.header,
+                            that.header.formatters[$.inArray(key, that.header.fields)],
+                            [value, item, i], value);
                     }
-                }
-                else {
-                    if (!($.inArray(key, that.header.fields) !== -1 &&
-                        (typeof value === 'string' || typeof value === 'number') &&
+
+                    if (thisColumn.filterStrictSearch) {
+                        if (!($.inArray(key, that.header.fields) !== -1 &&
+                            (typeof value === 'string' || typeof value === 'number') &&
+                            value.toString().toLowerCase() === fval.toString().toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    else {
+                        if (!($.inArray(key, that.header.fields) !== -1 &&
+                            (typeof value === 'string' || typeof value === 'number') &&
+                            (value + '').toLowerCase().indexOf(fval) !== -1)) {
+                            return false;
+                        }
+                    }
+                } else if (typeof value !== 'undefined'){
+                    if (!((typeof value === 'string' || typeof value === 'number') &&
                         (value + '').toLowerCase().indexOf(fval) !== -1)) {
                         return false;
                     }
@@ -432,23 +441,26 @@
     };
 
     BootstrapTable.prototype.onColumnSearch = function (event) {
-        copyValues(this);
         var text = $.trim($(event.currentTarget).val());
         var $field = $(event.currentTarget).closest('[data-field]').data('field');
+        this.addFilterField($field, text);
+    };
 
+    BootstrapTable.prototype.addFilterField = function (field, text) {
+        copyValues(this);
         if ($.isEmptyObject(this.filterColumnsPartial)) {
             this.filterColumnsPartial = {};
         }
         if (text) {
-            this.filterColumnsPartial[$field] = text;
+            this.filterColumnsPartial[field] = text;
         } else {
-            delete this.filterColumnsPartial[$field];
+            delete this.filterColumnsPartial[field];
         }
 
         this.options.pageNumber = 1;
-        this.onSearch(event);
+        this.initSearch();
         this.updatePagination();
-        this.trigger('column-search', $field, text);
+        this.trigger('column-search', field, text);
     };
 
     BootstrapTable.prototype.clearFilterControl = function () {
